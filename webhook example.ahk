@@ -21,4 +21,13 @@ webhook.Modify(AhkNewName, File)
 
 Msgbox % "Your webhook name is: " . webhook.name . "`nDont believe me? Check discord"
 
-Webhook.Execute("My custom message", A_ComputerName, image_icon2)
+;An example of adding extra raw data to webhook post
+raw_extra := {}
+embed := {}
+embed.title := "Discord.ahk"
+embed.description := "Checkout ""https://github.com/SuperKryston/Discord.ahk"" for help"
+embed.color := Discord.NoQuote(16711680) ; Because JSON.ahk would quote this and this is required as int rather than string
+raw_extra.embeds := [ embed ]
+
+
+Webhook.Execute("My custom message", A_ComputerName, image_icon2, raw_extra)
