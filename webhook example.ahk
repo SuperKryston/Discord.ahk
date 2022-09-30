@@ -1,8 +1,8 @@
 #Include <JSON>
 #Include <Discord>
 
-
-webhook_url = https://discord.com/api/webhooks/1024952168379330561/QBojtYI1Oa_cumia1Ox8m6Ew_ppoN1hEN9vI5tsMAHYQBimbrEJdATArhISuGfqAC30s
+;Place your url here
+webhook_url = 
 
 image_icon := "http://i.imgur.com/dS56Ewu.png"
 image_icon2 := "https://imgur.com/Yuviqei.png"
