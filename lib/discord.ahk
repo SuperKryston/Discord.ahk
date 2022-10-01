@@ -1,11 +1,16 @@
 class Discord {
 
 
+  /*
+  Intents can be set using "this.intents" as soon as client is created
+  See https://discord-intents-calculator.vercel.app/
+  */
+
   static BaseURL := "https://discord.com/api"
   static dump := true
   static IsLoaded := false
-  static guilds := {}
-  static channels := {}
+  static guilds := []
+  static channels := []
   static users
   static status := "online"
   static RateLimited := false
@@ -53,20 +58,20 @@ class Discord {
 
 
   SendTyping(channel) {
-    this.__WinHttpRequest("/v9/channels/" . channel . "/typing", "POST")
+    this.CallApi("POST", "/v9/channels/" . channel . "/typing")
   }
 
   SendMessage(message, channel) {
     data = {"content":"hi"}
     data := {}
     data.content := message
-    data.username := "test"
+    ;data.username := "test"
     this.SendContent(data, channel)
   }
 
 
   SendContent(data, channel) {
-    response := this.__WinHttpRequest("/v9/channels/" . channel . "/messages", "POST", data)
+    response := this.CallApi("POST", "/v9/channels/" . channel . "/messages", data)
     Msgbox % response
   }
 
@@ -115,10 +120,14 @@ class Discord {
       this.IsBot := true
 
     this.Token := token
-    If (this.IsBot = false)
-      gateway_url := this.__WinHttpRequest("/gateway")
-    Else
-      gateway_url := this.__WinHttpRequest("/gateway/bot")
+    If (this.IsBot = false) {
+      gateway_url := this.CallApi("GET", "/gateway")
+      this.intents := 3276799
+    }
+    Else {
+      gateway_url := this.CallApi("GET", "/gateway/bot")
+      this.intents := [ "GUILDS", "GUILD_MESSAGES" ]
+    }
 
     ;Msgbox %gateway_url%
     gateway_url := this.__JSON_READ(gateway_url)
@@ -126,6 +135,7 @@ class Discord {
     ;gateway_url := "wss://gateway.discord.gg"
     ;msgbox % WS_URL
     this.__gateway_url := gateway_url . "/?encoding=json&v=9"
+    ;Msgbox % this.__gateway_url
     this.__Initialize__Websocket()
 
 
@@ -222,6 +232,10 @@ class Discord {
     }
   }
 
+  CallApi(Method, Endpoint, Data:="") {
+    return this.__WinHttpRequest(Endpoint, Method, Data)
+  }
+
   __Event(EventName, Event)
   {
     this["__On" EventName](Event)
@@ -250,7 +264,7 @@ class Discord {
   }
   __OnClose(Event) {
     Msgbox Websocket Closed
-    this.__Disconnect
+    this.__Disconnect()
   }
 
   __Send_Websocket(data) {
@@ -302,11 +316,33 @@ class Discord {
   }
 
   __OP0(Data) {
-    If (Data.t = "READY" && Data.s = 1)
-      this.__Ready1(data.d)
+    If  (Data.s)
+      this.Seq := data.s
+    fn := this["__OP0_" Data.t]
+    %fn%(this, Data.d)
+    ;Msgbox % "__OP0_" Data.t
   }
 
-  __Ready1(data) {
+
+
+  __OP0_MESSAGE_CREATE(data) {
+    Msgbox % Json.Dump(data,,2)
+  }
+
+  __OP0_MESSAGE_UPDATE(data) {
+    Msgbox % Json.Dump(data,,2)
+  }
+
+  __OP0_MESSAGE_DELETE(data) {
+    Msgbox % Json.Dump(data,,2)
+  }
+  
+  __OP0_READY_SUPPLEMENTAL(data) {
+    
+  }
+
+
+  __OP0_READY(data) {
     this.user := data.user
     this.users := data.users
     this.country_code := data.country_code
@@ -329,8 +365,10 @@ class Discord {
     this.user_guild_settings := data.user_guild_settings
     this.tutorial := data.tutorial
     this.user_settings_proto := data.user_settings_proto
+    this.__Send_Websocket(this.__Send_After_Login())
   }
-  
+
+
   __OP10(Data) {
     Data := this.Data_Dump(Data)
     ;Msgbox % Data
@@ -367,31 +405,97 @@ class Discord {
     return Data
   }
 
+  __Send_After_Login() {
+    callback := {}
+    callback.op := this.NoQuote(4)
+    callback.d := {}
+    callback.d.guild_id := this.NoQuote("null")
+    callback.d.channel_id := this.NoQuote("null")
+    callback.d.self_mute := this.NoQuote("true")
+    callback.d.self_deaf := this.NoQuote("false")
+    callback.d.self_video := this.NoQuote("false")
+    return callback
+  }
+
+  Get_Intent_ID(intent) {
+    If (intent = 1) || (intent = "GUILDS")
+      return 1
+    Else If (intent = 2) || (intent = "GUILD_MEMBERS")
+      return 2
+    Else If (intent = 4) || (intent = "GUILD_BANS")
+      return 4
+    Else If (intent = 8) || (intent = "GUILD_EMOJIS_AND_STICKERS")
+      return 8
+    Else If (intent = 16) || (intent = "GUILD_INTEGRATIONS")
+      return 16
+    Else If (intent = 32) || (intent = "GUILD_WEBHOOKS")
+      return 32
+    Else If (intent = 64) || (intent = "GUILD_INVITES")
+      return 64
+    Else If (intent = 128) || (intent = "GUILD_VOICE_STATES")
+      return 128
+    Else If (intent = 256) || (intent = "GUILD_PRESENCES")
+      return 256
+    Else If (intent = 512) || (intent = "GUILD_MESSAGES")
+      return 512
+    Else If (intent = 1024) || (intent = "GUILD_MESSAGE_REACTIONS")
+      return 1024
+    Else If (intent = 2048) || (intent = "GUILD_MESSAGE_TYPING")
+      return 2048
+    Else If (intent = 4096) || (intent = "DIRECT_MESSAGES")
+      return 4096
+    Else If (intent = 8192) || (intent = "DIRECT_MESSAGE_REACTIONS")
+      return 8192
+    Else If (intent = 16384) || (intent = "DIRECT_MESSAGE_TYPING")
+      return 16384
+    Else If (intent = 32768) || (intent = "MESSAGE_CONTENT")
+      return 32768
+    Else
+      return 0
+  }
+
   __Send_Login() {
     callback := {}
     callback.op := this.NoQuote(2)
     callback.d := {}
+    ;callback.d.large_threshold := this.NoQuote(50)
     callback.d.token := this.Token
-    callback.d.capabilities := this.NoQuote(1021)
-    callback.d.intents := this.NoQuote(513)
+    ;callback.d.capabilities := this.NoQuote(1021)
+
+    ; https://discord-intents-calculator.vercel.app/
+    If (IsObject(this.intents)) {
+      intent := 0
+      enum := this.intents._NewEnum()
+      While enum[obj, value]
+        intent := intent + this.Get_Intent_ID(value)
+      callback.d.intents := this.NoQuote(intent)
+    }
+    Else If (this.intents != "") {
+      callback.d.intents := this.NoQuote(this.intents)
+    }
+    Else
+      callback.d.intents := this.NoQuote(513)
+    ;Msgbox % callback.d.intents
+    ;callback.d.intents := this.NoQuote(3276799) 
     callback.d.properties := this.__Build_Properties()
-    callback.d.presence := this.__Build_Presence()
-    callback.d.compress := this.NoQuote("false")
-    callback.d.client_state := this.__Build_Client_State()
+    ;callback.d.presence := this.__Build_Presence()
+    ;callback.d.compress := this.NoQuote("false")
+    ;callback.d.client_state := this.__Build_Client_State()
+    ;callback.d.version := this.NoQuote(9)
     return callback
   }
 
   __Build_Properties() {
     callback := {}
-    callback.os := "Windows"
-    callback.browser := "Firefox"
-    callback.device := ""
-    callback.system_locale := "en-US"
-    callback.browser_user_agent := "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:105.0) Gecko/20100101 Firefox/105.0"
-    callback.browser_version := 105.0
-    callback.os_version := "7"
-    callback.referrer := ""
-    callback.referring_domain := ""
+    callback["$os"] := "Windows"
+    callback["$browser"] := "Discord.ahk"
+    callback["$device"] := "Discord.ahk"
+    ;callback.system_locale := "en-US"
+    ;callback.browser_user_agent := "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:105.0) Gecko/20100101 Firefox/105.0"
+    ;callback.browser_version := 105.0
+    ;callback.os_version := "7"
+    ;callback.referrer := ""
+    ;callback.referring_domain := ""
     return callback
   }
 
