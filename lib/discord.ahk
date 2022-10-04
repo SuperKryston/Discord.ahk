@@ -7,7 +7,8 @@ class Discord {
   */
 
   static BaseURL := "https://discord.com/api"
-  static dump := true
+  ;static dump := true
+  ;static dump2 := true
   static IsLoaded := false
   static guilds := []
   static channels := []
@@ -15,7 +16,7 @@ class Discord {
   static status := "online"
   static RateLimited := false
   static RateLimitCooldown := 0
-
+  messages := {}
 
 
   SetPresence(status, afk:="", activities:="") {
@@ -45,7 +46,7 @@ class Discord {
     }
     
     obj.d.since := this.NoQuote(0)
-    If (activities)
+    If (activities) && (activities != "")
       obj.d.activities := activities
     Else 
       obj.d.activities := []
@@ -72,11 +73,25 @@ class Discord {
 
   SendContent(data, channel) {
     response := this.CallApi("POST", "/v9/channels/" . channel . "/messages", data)
-    Msgbox % response
+    this.messages[response.id] := response
+    ;Msgbox % Json.Dump(response)
   }
 
 
-
+  GetChannelMessages(channel_id, limit:=0, before_message_id:=0) {
+    messages := []
+    If (limit !=0) {
+      If (before_message_id != 0) {
+      }
+      Else {
+      }
+    }
+    enum := this.messages._NewEnum()
+    While enum[obj, val] {
+      messages.push(val)
+    }
+    return messages
+  }
 
 
 
@@ -114,6 +129,9 @@ class Discord {
 
 
   __New(token, user:="bot") {
+    this._SendHeartbeat := this.__SendHeartbeat.Bind(this)
+
+
     If (user = "true" || user = true || user = 1 || user = "check" || user = "user")
       this.IsBot := false
     Else
@@ -121,17 +139,19 @@ class Discord {
 
     this.Token := token
     If (this.IsBot = false) {
-      gateway_url := this.CallApi("GET", "/gateway")
+      gateway := this.CallApi("GET", "/gateway")
       this.intents := 3276799
     }
     Else {
-      gateway_url := this.CallApi("GET", "/gateway/bot")
+      gateway := this.CallApi("GET", "/gateway/bot")
       this.intents := [ "GUILDS", "GUILD_MESSAGES" ]
+      this.shards := gateway.shards
+      this.session_start_limit := gateway.session_start_limit
     }
-
+    ;Msgbox % Json.Dump(gateway)
     ;Msgbox %gateway_url%
-    gateway_url := this.__JSON_READ(gateway_url)
-    gateway_url := gateway_url.url
+    ;gateway_url := this.__JSON_READ(gateway_url)
+    gateway_url := gateway.url
     ;gateway_url := "wss://gateway.discord.gg"
     ;msgbox % WS_URL
     this.__gateway_url := gateway_url . "/?encoding=json&v=9"
@@ -198,7 +218,7 @@ class Discord {
     req.Send(this.Data_Dump(data))
     while (req.readyState != 4)
       sleep 1
-    response := req.responseText
+    response := this.__JSON_READ(req.responseText)
     If (this.dump)
       FileAppend, %response%, dump.txt
     return req.responseText
@@ -219,7 +239,7 @@ class Discord {
     whr.SetRequestHeader("Content-Type", "application/json")
     whr.Send(this.Data_Dump(Data))
     whr.WaitForResponse()
-    response := whr.ResponseText
+    response := this.__JSON_READ(whr.ResponseText)
     If (this.dump)
       FileAppend, %response%, dump.txt
     If (whr.status == 429) {
@@ -286,8 +306,10 @@ class Discord {
       this.__Close()
       Gui, % this.hWnd ": Destroy"
       this.hWnd := False
-      SendHeartbeat := this.__SendHeartbeat.Bind(this)
-      SetTimer, %SendHeartbeat%, Delete
+      If (this._SendHeartbeat) {
+        SendHeartbeat := this._SendHeartbeat
+        SetTimer, % this._SendHeartbeat, Delete
+      }
     }
   }
 
@@ -315,30 +337,75 @@ class Discord {
     return this.IsRateLimited
   }
 
+  SetOnData(DataName, Function) {
+    If (!Function)
+      return
+    If (DataName = "OP0") {
+      this.OP0 := Func(Function)
+    }
+    Else If (DataName = "MESSAGE_CREATE") {
+      this.MESSAGE_CREATE := Func(Function)
+    }
+    Else If (DataName = "MESSAGE_UPDATE") {
+      this.MESSAGE_UPDATE := Func(Function)
+    }
+    Else If (DataName = "MESSAGE_DELETE") {
+      this.MESSAGE_DELETE := Func(Function)
+    }
+
+  }
+
   __OP0(Data) {
     If  (Data.s)
       this.Seq := data.s
     fn := this["__OP0_" Data.t]
     %fn%(this, Data.d)
+    If IsObject(this.OP0) 
+      this.OP0.Call(Data.d, Data.t)
+
+    If (this.dump2) {
+      t := Data.t
+      d := Data.d
+      IniWrite, %A_Space%, discord.dump.ini, %t%, Data
+    }
+
     ;Msgbox % "__OP0_" Data.t
+    ;Msgbox % JSON.Dump(Data,,2)
   }
 
-
+  __OP0_TYPING_START(data) {
+    channel_id := data.channel_id
+    user_id := data.user_id
+    timestamp := data.timestamp
+    ;Msgbox % Json.Dump(data,,2)
+  }
 
   __OP0_MESSAGE_CREATE(data) {
-    Msgbox % Json.Dump(data,,2)
+    ;Msgbox % Json.Dump(data,,2)
+    this.messages[data.id] := data
+    If (this.MESSAGE_CREATE) {
+      this.MESSAGE_CREATE.Call(data, "MESSAGE_CREATE")
+    }
   }
 
   __OP0_MESSAGE_UPDATE(data) {
-    Msgbox % Json.Dump(data,,2)
+    this.messages[data.id] := data
+    If (this.MESSAGE_UPDATE) {
+      this.MESSAGE_UPDATE.Call(data, "MESSAGE_UPDATE")
+    }
+    ;Msgbox % Json.Dump(data,,2)
   }
 
   __OP0_MESSAGE_DELETE(data) {
-    Msgbox % Json.Dump(data,,2)
+    If (this.MESSAGE_DELETE) {
+      this.MESSAGE_DELETE.Call(data, "MESSAGE_DELETE")
+    }
+    this.messages.Delete(data.id)
+    ;Msgbox % Json.Dump(data,,2)
   }
   
   __OP0_READY_SUPPLEMENTAL(data) {
-    
+    ;Msgbox % Json.Dump(data,, 2)
   }
 
 
@@ -375,7 +442,7 @@ class Discord {
     Data := this.__JSON_READ(Data)
     this.HeartbeatACK := True
     Interval := Data.d.heartbeat_interval
-    SendHeartbeat := this.__SendHeartbeat.Bind(this)
+    SendHeartbeat := this._SendHeartbeat
     ;this.SendHeartbeat()
     SetTimer, %SendHeartbeat%, %Interval%
 
