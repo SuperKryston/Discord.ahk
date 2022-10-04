@@ -334,7 +334,7 @@ class Discord {
       this.RateLimited := false
   }
   IsRateLimited() {
-    return this.IsRateLimited
+    return this.RateLimited
   }
 
   SetOnData(DataName, Function) {
@@ -342,6 +342,9 @@ class Discord {
       return
     If (DataName = "OP0") {
       this.OP0 := Func(Function)
+    }
+    Else If (DataName = "TYPING_START") {
+      this.TYPING_START := Func(Function)
     }
     Else If (DataName = "MESSAGE_CREATE") {
       this.MESSAGE_CREATE := Func(Function)
@@ -352,7 +355,18 @@ class Discord {
     Else If (DataName = "MESSAGE_DELETE") {
       this.MESSAGE_DELETE := Func(Function)
     }
-
+    Else If (DataName = "MESSAGE_REACTION_ADD") {
+      this.MESSAGE_REACTION_ADD := Func(Function)
+    }
+    Else If (DataName = "MESSAGE_REACTION_REMOVE") {
+      this.MESSAGE_REACTION_REMOVE := Func(Function)
+    }
+    Else If (DataName = "MESSAGE_REACTION_REMOVE_ALL") {
+      this.MESSAGE_REACTION_REMOVE_ALL := Func(Function)
+    }
+    Else If (DataName = "MESSAGE_REACTION_REMOVE_EMOJI") {
+      this.MESSAGE_REACTION_REMOVE_EMOJI := Func(Function)
+    }
   }
 
   __OP0(Data) {
@@ -377,6 +391,9 @@ class Discord {
     channel_id := data.channel_id
     user_id := data.user_id
     timestamp := data.timestamp
+    If (this.TYPING_START) {
+      this.TYPING_START.Call(data, "TYPING_START")
+    }
     ;Msgbox % Json.Dump(data,,2)
   }
 
@@ -404,6 +421,34 @@ class Discord {
     ;Msgbox % Json.Dump(data,,2)
   }
   
+  __OP0_MESSAGE_REACTION_ADD(data) {
+    If (this.MESSAGE_REACTION_ADD) {
+      this.MESSAGE_REACTION_ADD.Call(data, "MESSAGE_REACTION_ADD")
+    }
+    ;Msgbox % Json.Dump(data,,2)
+  }
+
+  __OP0_MESSAGE_REACTION_REMOVE(data) {
+    If (this.MESSAGE_REACTION_REMOVE) {
+      this.MESSAGE_REACTION_REMOVE.Call(data, "MESSAGE_REACTION_REMOVE")
+    }
+    ;Msgbox % Json.Dump(data,,2)
+  }
+
+  __OP0_MESSAGE_REACTION_REMOVE_ALL(data) {
+    If (this.MESSAGE_REACTION_REMOVE_ALL) {
+      this.MESSAGE_REACTION_REMOVE_ALL.Call(data, "MESSAGE_REACTION_REMOVE_ALL")
+    }
+    ;Msgbox % Json.Dump(data,,2)
+  }
+
+  __OP0_MESSAGE_REACTION_REMOVE_EMOJI(data) {
+    If (this.MESSAGE_REACTION_REMOVE_EMOJI) {
+      this.MESSAGE_REACTION_REMOVE_EMOJI.Call(data, "MESSAGE_REACTION_REMOVE_EMOJI")
+    }
+    ;Msgbox % Json.Dump(data,,2)
+  }
+
   __OP0_READY_SUPPLEMENTAL(data) {
     ;Msgbox % Json.Dump(data,, 2)
   }
