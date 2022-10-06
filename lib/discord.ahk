@@ -82,8 +82,16 @@ class Discord {
     messages := []
     If (limit !=0) {
       If (before_message_id != 0) {
+        data := this.CallApi("GET", "/v9/channels/" . channel_id . "/messages?before=" . before_message_id . "&limit=" . limit)
       }
       Else {
+        data := this.CallApi("GET", "/v9/channels/" . channel_id . "/messages?limit=" . limit)
+      }
+    }
+    If (data) {
+      Loop % data.Length() {
+        cmessage:= data[A_Index]
+        this.messages[cmessage.id] := cmessage
       }
     }
     enum := this.messages._NewEnum()
