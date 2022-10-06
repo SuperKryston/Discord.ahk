@@ -10,8 +10,8 @@ class Discord {
   ;static dump := true
   ;static dump2 := true
   static IsLoaded := false
-  static guilds := []
-  static channels := []
+  guilds := []
+  channels := []
   static users
   static status := "online"
   static RateLimited := false
@@ -92,7 +92,12 @@ class Discord {
     }
     return messages
   }
-
+  GetChannels(guild_id) {
+    Loop % this.guilds.Length() {
+      If (this.guilds[A_Index].id = guild_id)
+        return this.guilds[A_Index].channels
+    }
+  }
 
 
 
@@ -157,7 +162,7 @@ class Discord {
     this.__gateway_url := gateway_url . "/?encoding=json&v=9"
     ;Msgbox % this.__gateway_url
     this.__Initialize__Websocket()
-
+    this.status := "online"
 
   }
   __Initialize__Websocket() {
@@ -367,6 +372,9 @@ class Discord {
     Else If (DataName = "MESSAGE_REACTION_REMOVE_EMOJI") {
       this.MESSAGE_REACTION_REMOVE_EMOJI := Func(Function)
     }
+    Else If (DataName = "GUILD_CREATE") {
+      this.GUILD_CREATE := Func(Function)
+    }
   }
 
   __OP0(Data) {
@@ -426,6 +434,20 @@ class Discord {
       this.MESSAGE_REACTION_ADD.Call(data, "MESSAGE_REACTION_ADD")
     }
     ;Msgbox % Json.Dump(data,,2)
+  }
+  __OP0_GUILD_CREATE(data) {
+    found := false
+    Loop % this.guilds.Length() {
+      If (this.guilds[A_Index].id = data.id) {
+        found := true
+        this.guilds[A_Index] := data
+      }
+    }
+    If (found = false)
+      this.guilds.push(data)
+    If (this.GUILD_CREATE) {
+      this.GUILD_CREATE.Call(data, "GUILD_CREATE")
+    }
   }
 
   __OP0_MESSAGE_REACTION_REMOVE(data) {
