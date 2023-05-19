@@ -107,7 +107,12 @@ class Discord {
     }
   }
 
-
+  GetGuild(guild_id) {
+    Loop % this.guilds.Length() {
+      If (this.guilds[A_Index].id = guild_id)
+        return this.guilds[A_Index]
+    }
+  }
 
 
 
@@ -319,10 +324,7 @@ class Discord {
       this.__Close()
       Gui, % this.hWnd ": Destroy"
       this.hWnd := False
-      If (this._SendHeartbeat) {
-        SendHeartbeat := this._SendHeartbeat
-        SetTimer, % this._SendHeartbeat, Delete
-      }
+      this.___setsendheartbeat(0)
     }
   }
 
@@ -510,16 +512,29 @@ class Discord {
     this.__Send_Websocket(this.__Send_After_Login())
   }
 
+  ___setsendheartbeat(Interval) {
+    static SendHeartbeat
+    If (!SendHeartbeat) {
+      SendHeartbeat := this._SendHeartbeat
+;this.__SendHeartbeat.Bind(this)
+    }
+    SetTimer, % SendHeartbeat, Delete
+
+
+    ;SendHeartbeat := this._SendHeartbeat
+    ;this.SendHeartbeat()
+    If (Interval > 0)
+      SetTimer, % SendHeartbeat, % Interval
+    Msgbox Heartbeat Modded
+  }
 
   __OP10(Data) {
     Data := this.Data_Dump(Data)
     ;Msgbox % Data
     Data := this.__JSON_READ(Data)
     this.HeartbeatACK := True
-    Interval := Data.d.heartbeat_interval
-    SendHeartbeat := this._SendHeartbeat
-    ;this.SendHeartbeat()
-    SetTimer, %SendHeartbeat%, %Interval%
+    ;Interval := Data.d.heartbeat_interval
+    this.___setsendheartbeat(Data.d.heartbeat_interval)
 
     this.__Send_Websocket(this.__Send_Login())
   }
@@ -560,6 +575,7 @@ class Discord {
   }
 
   Get_Intent_ID(intent) {
+    ; https://discord-intents-calculator.vercel.app/
     If (intent = 1) || (intent = "GUILDS")
       return 1
     Else If (intent = 2) || (intent = "GUILD_MEMBERS")
