@@ -301,7 +301,7 @@ class Discord {
     Msgbox Websocket Error
   }
   __OnClose(Event) {
-    Msgbox Websocket Closed
+    ;Msgbox Websocket Closed
     this.__Disconnect()
   }
 
@@ -525,7 +525,7 @@ class Discord {
     ;this.SendHeartbeat()
     If (Interval > 0)
       SetTimer, % SendHeartbeat, % Interval
-    Msgbox Heartbeat Modded
+    ;Msgbox Heartbeat Modded
   }
 
   __OP10(Data) {
