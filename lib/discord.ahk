@@ -100,11 +100,38 @@ class Discord {
     }
     return messages
   }
+
+
+  SearchPrivateChannelForId(channel_id) {
+    Loop % this.private_channels.Length() {
+      If (this.private_channels[A_Index].id = channel_id)
+        return this.private_channels[A_Index].id
+    }
+    return 0
+  }
+
+
+
   GetChannels(guild_id) {
     Loop % this.guilds.Length() {
       If (this.guilds[A_Index].id = guild_id)
         return this.guilds[A_Index].channels
     }
+  }
+
+  GetGuildByChannel(channel_id) {
+    Loop % this.guilds.Length() {
+      c_guild_id := this.guilds[A_Index].id
+      c_guild_channels := this.guilds[A_Index].channels
+      enum := c_guild_channels._NewEnum()
+      While enum[k, v] {
+        ;Msgbox % Json.Dump(v,,2)
+        If v.id = channel_id {
+          return c_guild_id
+        }
+      }
+    }
+    return 0
   }
 
   GetGuild(guild_id) {
