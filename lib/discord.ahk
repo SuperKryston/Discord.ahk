@@ -119,6 +119,32 @@ class Discord {
     }
   }
 
+  GetChannelData(channel_id) {
+    Guild_ID := this.GetGuildByChannel(Channel_id)
+    If Guild_ID {
+      Guild := this.GetGuild(Guild_ID)
+      enum := Guild.channels._NewEnum()
+      While enum[k, v] {
+        If (v.id = channel_id) {
+          return v
+        }
+      }
+    }
+
+
+
+    Private_Channel_ID := this.SearchPrivateChannelForId(channel_id)
+    If Private_Channel_ID {
+      enum := this.private_channels._NewEnum()
+      While enum[k, v] {
+        If (v.id = channel_id) {
+          return v
+        }
+      }
+    }
+
+  }
+
   GetGuildByChannel(channel_id) {
     Loop % this.guilds.Length() {
       c_guild_id := this.guilds[A_Index].id
