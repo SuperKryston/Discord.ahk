@@ -80,6 +80,19 @@ class Discord {
 
   GetChannelMessages(channel_id, limit:=0, before_message_id:=0) {
     messages := []
+
+    ;Check if channel messages exists
+    message_stored_count := 0
+    enum := this.messages._NewEnum()
+    While enum[obj, val] {
+      If (val.channel_id = channel_id)
+        message_stored_count := message_stored_count + 1
+    }
+    If (message_stored_count = 0 && limit = 0)
+      limit := 50
+    ;End check if channel messages exists
+
+
     If (limit !=0) {
       If (before_message_id != 0) {
         data := this.CallApi("GET", "/v9/channels/" . channel_id . "/messages?before=" . before_message_id . "&limit=" . limit)
@@ -94,13 +107,20 @@ class Discord {
         this.messages[cmessage.id] := cmessage
       }
     }
+
+
     enum := this.messages._NewEnum()
     While enum[obj, val] {
-      messages.push(val)
+      If (val.channel_id = channel_id)
+        messages.push(val)
     }
     return messages
+
   }
 
+  GetCachedChannelMessages(channel_id) {
+
+  }
 
   SearchPrivateChannelForId(channel_id) {
     Loop % this.private_channels.Length() {
